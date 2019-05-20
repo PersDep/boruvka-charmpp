@@ -2,8 +2,8 @@ module hello {
 
   array [1D] Hello {
     entry Hello();
-	entry void new_phase();
-	entry void receive(int from, int sender_phase, int direction);
+	entry void MST();
+	entry void convert_to_output();
 	//entry void receive_process();
   };
 

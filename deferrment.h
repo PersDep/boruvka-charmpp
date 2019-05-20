@@ -11,6 +11,67 @@
 #include <unordered_map>
 #include <queue>
 
+#define DEFAULT_ARITY 16
+#define SMALL_COMPONENT_EDGES_THRESHOLD   2
+#define FNAME_LEN   256
+#define WEIGHT_ERROR 0.0001
+
+typedef uint32_t vertex_id_t;
+typedef uint64_t edge_id_t;
+typedef double weight_t;
+
+/* The graph data structure*/
+typedef struct
+{
+    /***
+     The minimal graph repesentation consists of:
+     n        -- the number of vertices
+     m        -- the number of edges
+     endV     -- an array of size m that stores the 
+                 destination ID of an edge <src->dest>.
+     rowsIndices -- an array of size n+1 that stores the degree 
+                 (out-degree in case of directed graphs) and pointers to
+                 the endV array. The degree of vertex i is given by 
+                 rowsIndices[i+1]-rowsIndices[i], and the edges out of i are
+                 stored in the contiguous block endV[rowsIndices[i] .. rowsIndices[i+1]-1].
+     Vertices are ordered from 0 in our internal representation
+     ***/
+    vertex_id_t n;
+    edge_id_t m;
+    edge_id_t* rowsIndices;
+    vertex_id_t* endV;
+
+    /* Edge weights */
+    weight_t* weights;
+    weight_t min_weight, max_weight;
+
+    /* other graph parameters */
+    int scale; /* log2 of vertices number */
+    int avg_vertex_degree; /* relation m / n */
+    bool directed; 
+
+    /* RMAT graph parameters */
+    double a, b, c;     
+    bool permute_vertices;
+    
+    /* Distributed version variables */
+    int nproc, rank;
+    vertex_id_t local_n; /* local vertices number */
+    edge_id_t local_m; /* local edges number */
+    edge_id_t* num_edges_of_any_process;
+
+    char filename[FNAME_LEN]; /* filename for output graph */
+} graph_t;
+
+typedef struct
+{
+    vertex_id_t numTrees;
+    edge_id_t numEdges;
+    edge_id_t* p_edge_list;
+    edge_id_t* edge_id;
+
+} forest_t;
+
 template <class T>
 class OrderedMessageQueue {
 	private:

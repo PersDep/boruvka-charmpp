@@ -1,35 +1,36 @@
+#include <algorithm>
+#include <vector>
+#include <cassert>
+
+#include <error.h>
+
+#include "deferrment.h"
+
 #include "hello.decl.h"
 
 #include "hello.h"
 #include "main.decl.h"
 
-#include <cassert>
+using namespace std;
 
-#include "deferrment.h"
+char inFilename2[FNAME_LEN];
+char outFilename2[FNAME_LEN];
 
 extern /* readonly */ CProxy_Main mainProxy;
 
 
 Hello::Hello() {
-
-  CkPrintf("Started running Hello %d %d\n", 5, 10);
+  CkPrintf("Started running MST\n");
   // Nothing to do when the Hello chare object is created.
   //   This is where member variables would be initialized
   //   just like in a C++ class constructor.
-  this->size = 5;
-  this->p = 10;
-  this->current_p = -1;
-  this->neighbors = 2;
-  this->n_received = 0;
-
-  //Signal my neighbors
-  this->left_neighbor = (thisIndex+this->size-1)%(this->size);
-  this->right_neighbor = (thisIndex+1)%(this->size);
-
-
-  //this->the_msg_queue();
-  this->my_queues.expect(this->left_neighbor);
-  this->my_queues.expect(this->right_neighbor);
+  this->G = new graph_t;
+  char **args = new char*[2];
+  args[0] = "-in";
+  args[1] = "rmat=11";
+  init(3, args, G); 
+  readGraph(G, inFilename2);
+  this->trees_output = new forest_t;
 }
 
 
@@ -37,65 +38,223 @@ Hello::Hello() {
 // NOTE: This constructor does not need to appear in the ".ci" file
 Hello::Hello(CkMigrateMessage *msg) { }
 
+struct Graph
+{
+    struct Edge
+    {
+        int id, src, dest;
+        double weight;
 
-void Hello ::receive(int from, int sender_phase, int direction) {
-  // Have this chare object say hello to the user.
-  CkPrintf("Element  %d (phase %d) on processor %d RECEIVED from %d (p=%d) in direction %d.\n",
-           thisIndex, this->current_p, CkMyPe(), from, sender_phase, direction);
+        Edge(): id(-1), src(-1), dest(-1), weight(-1) {}
+        Edge(int id, int src, int dest, double weight): id(id), src(src), dest(dest), weight(weight) {}
+    };
 
-  this->my_queues.add(from,sender_phase,direction);
+    struct Subset
+    {
+        int parent, rank;
 
-	if( this->my_queues.all_ready() ){
-		//CkPrintf("Element  %d (phase %d) on processor %d all are ready.\n",
-		//         thisIndex, this->current_p, CkMyPe());
+        Subset(): parent(-1), rank(-1) {}
+        Subset(int parent, int rank = 0): parent(parent), rank(rank) {}
+    };
 
-		MultisenderOrderedMessageQueue<int>::iterator itr;
-		//itr = this->my_queues.begin();
-		//std::cout << " iterator value is " << *itr << " blah " << std::endl;
 
-		for(itr = this->my_queues.begin(); itr != this->my_queues.end(); ++itr){
-			//CkPrintf("Element  %d (phase %d) on processor %d : examine queue %d.\n",
-			//         thisIndex, this->current_p, CkMyPe(), *itr);
-			MultisenderOrderedMessageQueue<int>::msg_t the_msg = this->my_queues.pop(*itr);
-			this->receive_impl(the_msg.origin, the_msg.number, the_msg.value);
-		}
+    int nVertices, nEdges;
+    vector<Edge> edges;
+    vector<Subset> subsets;
+    vector<int> cheapestEdges;
 
-		this->new_phase();//not called as an entry method.
-		//this->receive_impl(one_message.first, one_message.second.first, one_message.second.second);
-	}
+    Graph(int nVertices, int nEdges, graph_t *rmatGraph = nullptr): nVertices(nVertices), nEdges(nEdges)
+    {
+        edges = vector<Edge>(nEdges);
+        subsets = vector<Subset>(nVertices);
+        if (rmatGraph)
+            for (vertex_id_t i = 0; i < rmatGraph->n; i++) {
+              subsets[i] = Subset(i);
+              for (edge_id_t j = rmatGraph->rowsIndices[i]; j < rmatGraph->rowsIndices[i + 1]; j++)
+                edges[j] = Edge(j, i, rmatGraph->endV[j], rmatGraph->weights[j]);
+            }
+    }
+
+    void InitCheapestEdges()
+    {
+	      cheapestEdges = vector<int>(nVertices, -1);
+    }
+
+    void CheckEdge(int set1, int set2, int i)
+    {
+        if (set1 == set2)
+            return;
+        if (cheapestEdges[set1] == -1 || edges[cheapestEdges[set1]].weight > edges[i].weight)
+          cheapestEdges[set1] = i;
+        if (cheapestEdges[set2] == -1 || edges[cheapestEdges[set2]].weight > edges[i].weight)
+          cheapestEdges[set2] = i;
+    }
+
+    int Find(int i)
+    {
+        if (subsets[i].parent != i)
+          subsets[i].parent = Find(subsets[i].parent);
+        return subsets[i].parent;
+    }
+
+    void Unite(int x, int y)
+    {
+        int xroot = Find(x);
+        int yroot = Find(y);
+        if (subsets[xroot].rank < subsets[yroot].rank)
+          subsets[xroot].parent = yroot;
+        else if (subsets[xroot].rank > subsets[yroot].rank)
+          subsets[yroot].parent = xroot;
+        else {
+          subsets[yroot].parent = xroot;
+          subsets[xroot].rank++;
+        }
+    }
+};
+
+void Hello ::MST( void ) {
+    Graph graph(G->n, G->m, G);
+    double mstWeight = 0;
+    int nTrees = graph.nVertices, mstCounter = 0;
+    mst.clear();
+    mst.push_back(vector<edge_id_t>());
+    while (nTrees > 1) {
+        graph.InitCheapestEdges();
+        for (int i = 0; i < graph.nEdges; i++)
+            graph.CheckEdge(graph.Find(graph.edges[i].src), graph.Find(graph.edges[i].dest), i);
+        bool cheapestExists = false;
+        for (int i = 0; i < graph.nVertices; i++)
+            if (graph.cheapestEdges[i] != -1) {
+                cheapestExists = true;
+                int set1 = graph.Find(graph.edges[graph.cheapestEdges[i]].src);
+                int set2 = graph.Find(graph.edges[graph.cheapestEdges[i]].dest);
+                if (set1 == set2)
+                  continue;
+                mstWeight += graph.edges[graph.cheapestEdges[i]].weight;
+                mst[mstCounter].push_back(graph.edges[graph.cheapestEdges[i]].id);
+                graph.Unite(set1, set2);
+                nTrees--;
+            }
+        if (!cheapestExists) {
+            mst.push_back(vector<edge_id_t>());
+            mstCounter++;
+            nTrees--;
+        }
+    }
 }
 
-void Hello ::receive_impl(int from, int sender_phase, int direction) {
+void Hello ::convert_to_output( void )
+{
+    result_t &trees_mst = *reinterpret_cast<result_t*>(&mst);
+    trees_output->p_edge_list = (edge_id_t *)malloc(trees_mst.size()*2 * sizeof(edge_id_t));
+    edge_id_t number_of_edges = 0;
+    for (vertex_id_t i = 0; i < trees_mst.size(); i++) number_of_edges += trees_mst[i].size();
+    trees_output->edge_id = (edge_id_t *)malloc(number_of_edges * sizeof(edge_id_t));
+    trees_output->p_edge_list[0] = 0;
+    trees_output->p_edge_list[1] = trees_mst[0].size();
+    for (vertex_id_t i = 1; i < trees_mst.size(); i++) {
+      trees_output->p_edge_list[2*i] = trees_output->p_edge_list[2*i-1];
+      trees_output->p_edge_list[2*i +1] = trees_output->p_edge_list[2*i-1] + trees_mst[i].size();
+    }
+    int k = 0;
+    for (vertex_id_t i = 0; i < trees_mst.size(); i++)
+      for (edge_id_t j = 0; j < trees_mst[i].size(); j++) {
+        trees_output->edge_id[k] = trees_mst[i][j];
+        k++;
+      }
+    trees_output->numTrees = trees_mst.size();
+    trees_output->numEdges = number_of_edges;
 
-  // Have this chare object say hello to the user.
-  CkPrintf("Element  %d (phase %d) on processor %d PROCESSED from %d (p=%d) in direction %d.\n",
-           thisIndex, this->current_p, CkMyPe(), from, sender_phase, direction);
+    write_output_information(trees_output, outFilename2);
+    free(trees_output->p_edge_list);
+    free(trees_output->edge_id);
 
-  CkAssert(sender_phase == this->current_p);
-  assert(sender_phase == this->current_p);
+    printf("trees = %u\n", trees_output->numTrees);
 
-  this->n_received++;
+    free(trees_output);
+    freeGraph(G);
+    free(G);
 }
 
-void Hello ::new_phase( void ) {
+void Hello::write_output_information(forest_t *trees, const char *filename)
+{
+    FILE *F = fopen(filename, "wb");
+    assert(fwrite(&trees->numTrees, sizeof(vertex_id_t), 1, F) == 1);
+    assert(fwrite(&trees->numEdges, sizeof(edge_id_t), 1, F) == 1);
+    assert(fwrite(trees->p_edge_list, sizeof(edge_id_t), 2*trees->numTrees, F) == 2*trees->numTrees);
+    assert(fwrite(trees->edge_id, sizeof(edge_id_t), trees->numEdges, F) == trees->numEdges);
+    fclose(F);
+}
 
-  if(this->current_p > this->p){
-	  //done
-	  mainProxy.done();
-	  return;
-  }
+void Hello::usage(int argc, char **argv)
+{
+    printf("Usage:\n");
+    printf("    %s -in <input> [options] \n", argv[0]);
+    printf("Options:\n");
+    printf("    -in <input> -- input graph filename\n");
+    printf("    -out <output> -- algorithm result will be placed to output filename. It can be used in validation. <in>.mst is default value.\n");
+    printf("    -nIters <nIters> -- number of iterations. By default 64\n");
+    exit(1);
+}
 
-  this->current_p++;
-  // Have this chare object say hello to the user.
-  CkPrintf("Element  %d on processor %d starting phase %d, has received %d.\n",
-           thisIndex, CkMyPe(), this->current_p, this->n_received);
+void Hello::init(int argc, char** argv, graph_t* G)
+{
+    int l, buf;
+    inFilename2[0] = '\0';
+    outFilename2[0] = '\0';
+    bool no_in_filename = true; 
 
+    if (argc == 1) usage(argc, argv);
 
-   this->n_received = 0;
-  //Signal my neighbors
-  	thisProxy[this->left_neighbor].receive(thisIndex, this->current_p, -1);
-  	thisProxy[this->right_neighbor].receive(thisIndex, this->current_p, 1);
+    for (int i = 1; i < argc; ++i) {
+   		if (!strcmp(argv[i], "-in")) {
+            l = strlen(argv[++i]);
+            strncpy(inFilename2, argv[i], (l > FNAME_LEN-1 ? FNAME_LEN-1 : l) );
+            no_in_filename = false;
+        }
+   		if (!strcmp(argv[i], "-out")) {
+            l = strlen(argv[++i]);
+            strncpy(outFilename2, argv[i], (l > FNAME_LEN-1 ? FNAME_LEN-1 : l) );
+        }
+		if (!strcmp(argv[i], "-nIters")) {
+			buf = (int) atoi(argv[++i]);
+        }
+    }
+    if (no_in_filename) usage(argc, argv);
+    if (strlen(outFilename2) == 0) sprintf(outFilename2, "%s.mst", inFilename2);
+}
 
+void Hello::readGraph(graph_t *G, char *filename)
+{
+    uint8_t align;
+    FILE *F = fopen(filename, "rb");
+    if (!F) error(EXIT_FAILURE, 0, "Error in opening file %s", filename);
+    
+    assert(fread(&G->n, sizeof(vertex_id_t), 1, F) == 1);
+    G->scale = log(G->n) / log (2);
+    
+    assert(fread(&G->m, sizeof(edge_id_t), 1, F) == 1);
+    assert(fread(&G->directed, sizeof(bool), 1, F) == 1);
+    assert(fread(&align, sizeof(uint8_t), 1, F) == 1);
+    
+    G->rowsIndices = (edge_id_t *)malloc((G->n+1) * sizeof(edge_id_t));
+    assert(G->rowsIndices); 
+    assert(fread(G->rowsIndices, sizeof(edge_id_t), G->n+1, F) == (G->n+1));
+    G->endV = (vertex_id_t *)malloc(G->rowsIndices[G->n] * sizeof(vertex_id_t));
+    assert(G->endV);
+    assert(fread(G->endV, sizeof(vertex_id_t), G->rowsIndices[G->n], F) == G->rowsIndices[G->n]);
+    G->weights = (weight_t *)malloc(G->m * sizeof(weight_t));
+    assert(G->weights);
+
+    assert(fread(G->weights, sizeof(weight_t), G->m, F) == G->m);
+    fclose(F);
+}
+
+void Hello::freeGraph(graph_t *G)
+{
+    free(G->rowsIndices);
+    free(G->endV);
+    free(G->weights);
 }
 
 
