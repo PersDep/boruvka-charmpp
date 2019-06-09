@@ -1,2 +1,12 @@
 
 \.vscode/
+
+*.o
+
+*.decl.h
+
+*.def.h
+
+hello
+
+charmrun
