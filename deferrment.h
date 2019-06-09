@@ -1,13 +1,12 @@
 #ifndef _DEFERRMENT_HPP_
 #define _DEFERRMENT_HPP_
 
-//#define DEBUG 1
-#ifdef DEBUG
-#include <iostream>
-#endif
-
+#include <algorithm>
 #include <cassert>
+#include <iostream>
 #include <set>
+#include <vector>
+#include <map>
 #include <unordered_map>
 #include <queue>
 
@@ -19,6 +18,8 @@
 typedef uint32_t vertex_id_t;
 typedef uint64_t edge_id_t;
 typedef double weight_t;
+
+using namespace std;
 
 /* The graph data structure*/
 typedef struct
@@ -71,6 +72,92 @@ typedef struct
     edge_id_t* edge_id;
 
 } forest_t;
+
+struct Graph
+{
+    struct Edge
+    {
+		int id, src, dest;
+		double weight;
+
+		Edge(): id(-1), src(-1), dest(-1), weight(-1) {}
+		Edge(int id, int src, int dest, double weight): id(id), src(src), dest(dest), weight(weight) {}
+    };
+
+    struct Subset
+    {
+		int parent, rank;
+
+		Subset(): parent(-1), rank(-1) {}
+		Subset(int parent, int rank = 0): parent(parent), rank(rank) {}
+    };
+
+
+    int nVertices, nEdges;
+    vector<Edge> edges;
+    vector<Subset> subsets;
+    vector<int> cheapestEdges;
+    map<int, map<int, bool>> fragments;
+
+    Graph(int nVertices, int nEdges, graph_t *rmatGraph = nullptr): nVertices(nVertices), nEdges(nEdges)
+    {
+    	edges = vector<Edge>(nEdges);
+    	subsets = vector<Subset>(nVertices);
+    	if (rmatGraph)
+	        for (vertex_id_t i = 0; i < rmatGraph->n; i++) {
+		        subsets[i] = Subset(i);
+		        fragments[i][i] = true;
+		        for (edge_id_t j = rmatGraph->rowsIndices[i]; j < rmatGraph->rowsIndices[i + 1]; j++)
+			        edges[j] = Edge(j, i, rmatGraph->endV[j], rmatGraph->weights[j]);
+	        }
+    }
+
+    void InitCheapestEdges() { cheapestEdges = vector<int>(nVertices, -1); }
+
+	int Find(int i) { return subsets[i].parent; }
+
+    void CheckEdge(int set1, int set2, int i)
+    {
+        if (set1 == set2) {
+	        return;
+        }
+	    if (cheapestEdges[set1] == -1 || edges[cheapestEdges[set1]].weight > edges[i].weight)
+		    cheapestEdges[set1] = i;
+    }
+
+    void Unite(int xroot, int yroot)
+    {
+	    if (subsets[xroot].rank < subsets[yroot].rank) {
+		    subsets[xroot].parent = yroot;
+		    UpdateFragments(xroot, yroot);
+	    } else if (subsets[xroot].rank > subsets[yroot].rank) {
+		    subsets[yroot].parent = xroot;
+		    UpdateFragments(yroot, xroot);
+	    } else {
+		    subsets[yroot].parent = xroot;
+		    subsets[xroot].rank++;
+		    UpdateFragments(yroot, xroot);
+	    }
+    }
+
+    void UpdateFragments(int oldRoot, int newRoot)
+    {
+	    fragments[newRoot].insert(fragments[oldRoot].begin(), fragments[oldRoot].end());
+	    fragments.erase(oldRoot);
+	    for (auto &child : fragments[newRoot])
+	        subsets[child.first].parent = newRoot;
+    }
+
+    void PrintFragments()
+    {
+    	for (auto &fragment : fragments) {
+		    cout << fragment.first << ": ";
+		    for (auto &child : fragment.second)
+			    cout << child.first << " ";
+		    cout << endl;
+	    }
+    }
+};
 
 template <class T>
 class OrderedMessageQueue {
