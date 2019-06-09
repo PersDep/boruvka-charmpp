@@ -7,7 +7,12 @@
 #include <assert.h>
 #include <math.h>
 
+typedef vector<vector<edge_id_t > > result_t;
+
 class Main : public CBase_Main {
+
+private:
+  result_t mst;
 
  public:
 
@@ -23,6 +28,9 @@ class Main : public CBase_Main {
   void readGraph(graph_t *G, char *filename);
   void freeGraph(graph_t *G);
 
+  void* MST(graph_t *G);
+  void convert_to_output(graph_t *G, void* result, forest_t *trees_output);
+  void write_output_information(forest_t *trees, char *filename);
 };
 
 

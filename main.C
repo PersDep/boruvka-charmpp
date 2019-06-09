@@ -49,23 +49,23 @@ Main::Main(CkArgMsg* msg) {
     graph_t g;
     struct timespec start_ts, finish_ts;
     double *perf;
-    // forest_t trees_output;
+    forest_t trees_output;
     /* initializing and reading the graph */
     init(msg->argc, msg->argv, &g); 
     readGraph(&g, inFilename);
     // init_mst(&g);
 
       // Create the array of Hello chare objects.
-    CProxy_Hello helloArray = CProxy_Hello::ckNew(1);
+    // CProxy_Hello helloArray = CProxy_Hello::ckNew(1);
 
     perf = (double *)malloc(nIters * sizeof(double));
-    // void *result = 0;
+    void *result = 0;
 
     printf("start algorithm iterations...\n");
     for (int i = 0; i < nIters; ++i) {
         printf("\tMST %d\t ...",i); fflush(NULL);
         clock_gettime(CLOCK, &start_ts);
-        helloArray.MST();
+        result = MST(&g);
         clock_gettime(CLOCK, &finish_ts);
         double time = (finish_ts.tv_nsec - (double)start_ts.tv_nsec) * 1.0e-9 + (finish_ts.tv_sec - (double)start_ts.tv_sec);
         perf[i] = g.m / (1000000 * time);
@@ -73,10 +73,11 @@ Main::Main(CkArgMsg* msg) {
     }
     printf("algorithm iterations finished.\n");
 
-    helloArray.convert_to_output();
-    // write_output_information(&trees_output, outFilename);
-    // free(trees_output.p_edge_list);
-    // free(trees_output.edge_id);
+    // helloArray.convert_to_output();
+    convert_to_output(&g, result, &trees_output);
+    write_output_information(&trees_output, outFilename);
+    free(trees_output.p_edge_list);
+    free(trees_output.edge_id);
 
     /* final print */
     double min_perf, max_perf, avg_perf;
@@ -89,19 +90,86 @@ Main::Main(CkArgMsg* msg) {
     }
     avg_perf /= nIters;
 
-    printf("%s: vertices = %d edges = %lld nIters = %d MST performance min = %.4f avg = %.4f max = %.4f MTEPS\n", 
-            inFilename, g.n, (long long)g.m, nIters, min_perf, avg_perf, max_perf);
+    printf("%s: vertices = %d edges = %lld trees = %u nIters = %d MST performance min = %.4f avg = %.4f max = %.4f MTEPS\n", 
+            inFilename, g.n, (long long)g.m, trees_output.numTrees, nIters, min_perf, avg_perf, max_perf);
     printf("Performance = %.4f MTEPS\n", avg_perf);
     free(perf);
     freeGraph(&g);
     // finalize_mst(&g);
     delete msg;
+    done();
 }
 
 
 // Constructor needed for chare object migration (ignore for now)
 // NOTE: This constructor does not need to appear in the ".ci" file
 Main::Main(CkMigrateMessage* msg) { }
+
+void* Main::MST(graph_t *G)
+{
+	Graph graph(G->n, G->m, G);
+	double mstWeight = 0;
+	int nTrees = graph.nVertices, mstCounter = 0;
+	mst.clear();
+	mst.push_back(vector<edge_id_t>());
+	while (nTrees > 1) {
+		graph.InitCheapestEdges();
+		for (int i = 0; i < graph.nEdges; i++) //by fragments (chare array of fragments processors)
+			graph.CheckEdge(graph.Find(graph.edges[i].src), graph.Find(graph.edges[i].dest), i);
+		bool cheapestExists = false;
+		for (int i = 0; i < graph.nVertices; i++)
+			if (graph.cheapestEdges[i] != -1) {
+				cheapestExists = true;
+				int set1 = graph.Find(graph.edges[graph.cheapestEdges[i]].src);
+				int set2 = graph.Find(graph.edges[graph.cheapestEdges[i]].dest);
+				if (set1 == set2)
+					continue;
+				mstWeight += graph.edges[graph.cheapestEdges[i]].weight;
+				mst[mstCounter].push_back(graph.edges[graph.cheapestEdges[i]].id);
+				graph.Unite(set1, set2);
+				nTrees--;
+			}
+		if (!cheapestExists) {
+			mst.push_back(vector<edge_id_t>());
+			mstCounter++;
+			nTrees--;
+		}
+	}
+	return &mst;
+}
+
+void Main::convert_to_output(graph_t *G, void* result, forest_t *trees_output)
+{
+	result_t &trees_mst = *reinterpret_cast<result_t*>(result);
+	trees_output->p_edge_list = (edge_id_t *)malloc(trees_mst.size()*2 * sizeof(edge_id_t));
+	edge_id_t number_of_edges = 0;
+	for (vertex_id_t i = 0; i < trees_mst.size(); i++) number_of_edges += trees_mst[i].size();
+	trees_output->edge_id = (edge_id_t *)malloc(number_of_edges * sizeof(edge_id_t));
+	trees_output->p_edge_list[0] = 0;
+	trees_output->p_edge_list[1] = trees_mst[0].size();
+	for (vertex_id_t i = 1; i < trees_mst.size(); i++) {
+		trees_output->p_edge_list[2*i] = trees_output->p_edge_list[2*i-1];
+		trees_output->p_edge_list[2*i +1] = trees_output->p_edge_list[2*i-1] + trees_mst[i].size();
+	}
+	int k = 0;
+	for (vertex_id_t i = 0; i < trees_mst.size(); i++)
+		for (edge_id_t j = 0; j < trees_mst[i].size(); j++) {
+			trees_output->edge_id[k] = trees_mst[i][j];
+			k++;
+		}
+	trees_output->numTrees = trees_mst.size();
+	trees_output->numEdges = number_of_edges;
+}
+
+void Main::write_output_information(forest_t *trees, char *filename)
+{
+    FILE *F = fopen(filename, "wb");
+    assert(fwrite(&trees->numTrees, sizeof(vertex_id_t), 1, F) == 1);
+    assert(fwrite(&trees->numEdges, sizeof(edge_id_t), 1, F) == 1);
+    assert(fwrite(trees->p_edge_list, sizeof(edge_id_t), 2*trees->numTrees, F) == 2*trees->numTrees);
+    assert(fwrite(trees->edge_id, sizeof(edge_id_t), trees->numEdges, F) == trees->numEdges);
+    fclose(F);
+}
 
 void Main::usage(int argc, char **argv)
 {
