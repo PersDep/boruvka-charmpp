@@ -25,12 +25,16 @@ Hello::Hello() {
   //   This is where member variables would be initialized
   //   just like in a C++ class constructor.
   this->G = new graph_t;
-  char **args = new char*[2];
-  args[0] = "-in";
-  args[1] = "rmat=11";
+  char **args = new char*[3];
+  args[1] = "-in";
+  args[2] = "rmat-10";
+  CkPrintf("Going to init\n");
   init(3, args, G); 
+  CkPrintf("Inited\n");
   readGraph(G, inFilename2);
+  CkPrintf("Read graph\n");
   this->trees_output = new forest_t;
+  CkPrintf("MST constructor finished\n");
 }
 
 
@@ -174,6 +178,7 @@ void Hello ::convert_to_output( void )
     free(trees_output);
     freeGraph(G);
     free(G);
+    mainProxy.done();
 }
 
 void Hello::write_output_information(forest_t *trees, const char *filename)
@@ -206,11 +211,14 @@ void Hello::init(int argc, char** argv, graph_t* G)
 
     if (argc == 1) usage(argc, argv);
 
+    CkPrintf("Initing\n");
+
     for (int i = 1; i < argc; ++i) {
    		if (!strcmp(argv[i], "-in")) {
             l = strlen(argv[++i]);
             strncpy(inFilename2, argv[i], (l > FNAME_LEN-1 ? FNAME_LEN-1 : l) );
             no_in_filename = false;
+            CkPrintf("filename: %s\n", inFilename2);
         }
    		if (!strcmp(argv[i], "-out")) {
             l = strlen(argv[++i]);
