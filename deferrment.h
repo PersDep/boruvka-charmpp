@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <queue>
 
+#include <pup_stl.h>
+
 #define DEFAULT_ARITY 16
 #define SMALL_COMPONENT_EDGES_THRESHOLD   2
 #define FNAME_LEN   256
@@ -82,6 +84,12 @@ struct Graph
 
 		Edge(): id(-1), src(-1), dest(-1), weight(-1) {}
 		Edge(int id, int src, int dest, double weight): id(id), src(src), dest(dest), weight(weight) {}
+
+		void pup(PUP::er &p) {
+			Edge::pup(p);
+			p|id; p|src; p|dest;
+			p|weight;
+		}
     };
 
     struct Subset
@@ -90,6 +98,10 @@ struct Graph
 
 		Subset(): parent(-1), rank(-1) {}
 		Subset(int parent, int rank = 0): parent(parent), rank(rank) {}
+		void pup(PUP::er &p) {
+			Subset::pup(p);
+			p|parent; p|rank;
+		}
     };
 
 
@@ -98,6 +110,15 @@ struct Graph
     vector<Subset> subsets;
     vector<int> cheapestEdges;
     map<int, map<int, bool>> fragments;
+
+	void pup(PUP::er &p) {
+      Graph::pup(p);
+      p|nVertices; p|nEdges;
+      p|edges; p|subsets; p|cheapestEdges;
+	  p|fragments;
+    }
+
+	Graph() { }
 
     Graph(int nVertices, int nEdges, graph_t *rmatGraph = nullptr): nVertices(nVertices), nEdges(nEdges)
     {
@@ -157,6 +178,16 @@ struct Graph
 		    cout << endl;
 	    }
     }
+};
+
+struct UniteInfo
+{
+	int set1, set2, edgeId;
+
+	void pup(PUP::er &p) {
+		UniteInfo::pup(p);
+		p|set1; p|set2; p|edgeId;
+	}
 };
 
 template <class T>

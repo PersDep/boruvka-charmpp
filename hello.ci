@@ -2,8 +2,8 @@ module hello {
 
   array [1D] Hello {
     entry Hello();
-	entry void MST();
-	entry void convert_to_output();
+  entry void ProcessFragment(Graph graph);
+  //entry void ProcessFragment();
   };
 
 };

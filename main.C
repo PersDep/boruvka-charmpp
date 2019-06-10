@@ -108,27 +108,48 @@ Main::Main(CkMigrateMessage* msg) { }
 void* Main::MST(graph_t *G)
 {
 	Graph graph(G->n, G->m, G);
-	double mstWeight = 0;
+	// double mstWeight = 0;
 	int nTrees = graph.nVertices, mstCounter = 0;
 	mst.clear();
 	mst.push_back(vector<edge_id_t>());
+    
+    // CProxy_Hello helloArray = CProxy_Hello::ckNew(1);
+    // helloArray.ProcessFragment(graph);
+
 	while (nTrees > 1) {
 		graph.InitCheapestEdges();
-		for (int i = 0; i < graph.nEdges; i++) //by fragments (chare array of fragments processors)
-			graph.CheckEdge(graph.Find(graph.edges[i].src), graph.Find(graph.edges[i].dest), i);
-		bool cheapestExists = false;
-		for (int i = 0; i < graph.nVertices; i++)
-			if (graph.cheapestEdges[i] != -1) {
-				cheapestExists = true;
-				int set1 = graph.Find(graph.edges[graph.cheapestEdges[i]].src);
-				int set2 = graph.Find(graph.edges[graph.cheapestEdges[i]].dest);
-				if (set1 == set2)
-					continue;
-				mstWeight += graph.edges[graph.cheapestEdges[i]].weight;
-				mst[mstCounter].push_back(graph.edges[graph.cheapestEdges[i]].id);
-				graph.Unite(set1, set2);
-				nTrees--;
-			}
+
+        CProxy_Hello helloArray = CProxy_Hello::ckNew(graph.fragments.size());
+        helloArray.ProcessFragment(graph);
+        // CProxy_Hello helloArray = CProxy_Hello::ckNew(1);
+        // helloArray.ProcessFragment();
+        CkPrintf("Waiting for reduction\n");
+        // CkWaitQD();
+        waitReduction = true;
+        while(waitReduction);
+        CkPrintf("Reduction finished with pairs size %u\n", pairs.size());
+        // nTrees = 0;
+
+		// for (int i = 0; i < graph.nEdges; i++) //by fragments (chare array of fragments processors)
+		// 	graph.CheckEdge(graph.Find(graph.edges[i].src), graph.Find(graph.edges[i].dest), i);
+		// bool cheapestExists = false;
+		// for (int i = 0; i < graph.nVertices; i++)
+		// 	if (graph.cheapestEdges[i] != -1) {
+		// 		cheapestExists = true;
+		// 		int set1 = graph.Find(graph.edges[graph.cheapestEdges[i]].src);
+		// 		int set2 = graph.Find(graph.edges[graph.cheapestEdges[i]].dest);
+		// 		if (set1 == set2)
+		// 			continue;
+
+        bool cheapestExists = false;
+        for (size_t i = 0; i < pairs.size(); i++) {
+            cheapestExists = true;
+            // mstWeight += graph.edges[graph.cheapestEdges[i]].weight;
+            // mst[mstCounter].push_back(graph.edges[graph.cheapestEdges[i]].id);
+            mst[mstCounter].push_back(pairs[i].edgeId);
+            graph.Unite(pairs[i].set1, pairs[i].set2);
+            nTrees--;
+		}
 		if (!cheapestExists) {
 			mst.push_back(vector<edge_id_t>());
 			mstCounter++;
@@ -240,6 +261,13 @@ void Main::freeGraph(graph_t *G)
     free(G->rowsIndices);
     free(G->endV);
     free(G->weights);
+}
+
+void Main::reduce(vector<UniteInfo> info)
+{
+    CkPrintf("reduce\n");
+    pairs = info;
+    waitReduction = false;
 }
 
 
