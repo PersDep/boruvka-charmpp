@@ -75,36 +75,49 @@ typedef struct
 
 } forest_t;
 
+struct Edge
+{
+	double weight;
+	int id, src, dest;
+
+	Edge(): id(-1), src(-1), dest(-1), weight(-1) {}
+	Edge(int id, int src, int dest, double weight): id(id), src(src), dest(dest), weight(weight) {}
+
+	void pup(PUP::er &p) {
+		Edge::pup(p);
+		p|id; p|src; p|dest;
+		p|weight;
+	}
+};
+
+struct EmbeddedEdge
+{
+	int id, src, dest;
+
+	EmbeddedEdge(): id(-1), src(-1), dest(-1) {}
+	EmbeddedEdge(int id, int src, int dest): id(id), src(src), dest(dest) {}
+	EmbeddedEdge(const Edge &edge): id(edge.id), src(edge.src), dest(edge.dest) {}
+
+	void pup(PUP::er &p) {
+		EmbeddedEdge::pup(p);
+		p|id; p|src; p|dest;
+	}
+};
+
+struct Subset
+{
+	int parent, rank;
+
+	Subset(): parent(-1), rank(-1) {}
+	Subset(int parent, int rank = 0): parent(parent), rank(rank) {}
+	void pup(PUP::er &p) {
+		Subset::pup(p);
+		p|parent; p|rank;
+	}
+};
+
 struct Graph
 {
-    struct Edge
-    {
-		int id, src, dest;
-		double weight;
-
-		Edge(): id(-1), src(-1), dest(-1), weight(-1) {}
-		Edge(int id, int src, int dest, double weight): id(id), src(src), dest(dest), weight(weight) {}
-
-		void pup(PUP::er &p) {
-			Edge::pup(p);
-			p|id; p|src; p|dest;
-			p|weight;
-		}
-    };
-
-    struct Subset
-    {
-		int parent, rank;
-
-		Subset(): parent(-1), rank(-1) {}
-		Subset(int parent, int rank = 0): parent(parent), rank(rank) {}
-		void pup(PUP::er &p) {
-			Subset::pup(p);
-			p|parent; p|rank;
-		}
-    };
-
-
     int nVertices, nEdges;
     vector<Edge> edges;
     vector<Subset> subsets;
@@ -178,16 +191,6 @@ struct Graph
 		    cout << endl;
 	    }
     }
-};
-
-struct UniteInfo
-{
-	int set1, set2, edgeId;
-
-	void pup(PUP::er &p) {
-		UniteInfo::pup(p);
-		p|set1; p|set2; p|edgeId;
-	}
 };
 
 template <class T>

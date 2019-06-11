@@ -7,7 +7,7 @@ mainmodule main {
   mainchare Main {
     entry Main(CkArgMsg* msg);
     entry void done();
-    entry [reductiontarget] void reduce(vector<UniteInfo> info);
+    entry [reductiontarget] void reduce(CkReductionMsg *msg);
   };
 
 };

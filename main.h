@@ -14,9 +14,10 @@ typedef vector<vector<edge_id_t > > result_t;
 class Main : public CBase_Main {
 
 private:
+  graph_t g;
+  Graph graph;
   result_t mst;
-  vector<UniteInfo> pairs;
-  bool waitReduction;
+  int nTrees, mstCounter;
 
  public:
 
@@ -32,10 +33,11 @@ private:
   void readGraph(graph_t *G, char *filename);
   void freeGraph(graph_t *G);
 
-  void* MST(graph_t *G);
+  void MST(graph_t *G);
+  void ContinueMST();
   void convert_to_output(graph_t *G, void* result, forest_t *trees_output);
   void write_output_information(forest_t *trees, char *filename);
-  void reduce(vector<UniteInfo> info);
+  void reduce(CkReductionMsg *msg);
 };
 
 
