@@ -18,6 +18,7 @@ private:
   Graph graph;
   result_t mst;
   int nTrees, mstCounter;
+  struct timespec start_ts, finish_ts;
 
  public:
 

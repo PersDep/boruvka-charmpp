@@ -41,51 +41,15 @@ Main::Main(CkArgMsg* msg) {
   //   chare object).
     mainProxy = thisProxy;
 
-    // struct timespec start_ts, finish_ts;
-    // double *perf;
-    // forest_t trees_output;
     /* initializing and reading the graph */
     init(msg->argc, msg->argv, &g); 
     readGraph(&g, inFilename);
 
-    // perf = (double *)malloc(nIters * sizeof(double));
-    // void *result = 0;
-
-    printf("start algorithm iterations...\n");
-    printf("\tMST %d\t ...",0); fflush(NULL);
+    CkPrintf("start algorithm iterations...\n");
+    CkPrintf("\tMST %d\t ...",0); fflush(NULL);
+    clock_gettime(CLOCK, &start_ts);
     MST(&g);
-    // for (int i = 0; i < 1; ++i) {
-    //     printf("\tMST %d\t ...",i); fflush(NULL);
-    //     clock_gettime(CLOCK, &start_ts);
-    //     result = MST(&g);
-    //     clock_gettime(CLOCK, &finish_ts);
-    //     double time = (finish_ts.tv_nsec - (double)start_ts.tv_nsec) * 1.0e-9 + (finish_ts.tv_sec - (double)start_ts.tv_sec);
-    //     perf[i] = g.m / (1000000 * time);
-    //     printf("\tfinished. Time is %.4f secs\n", time);
-    // }
-    // printf("algorithm iterations finished.\n");
-
-    // // helloArray.convert_to_output();
-    // convert_to_output(&g, result, &trees_output);
-    // write_output_information(&trees_output, outFilename);
-    // free(trees_output.p_edge_list);
-    // free(trees_output.edge_id);
-
-    // /* final print */
-    // double min_perf, max_perf, avg_perf;
-    // max_perf = avg_perf = 0;
-    // min_perf = DBL_MAX;
-    // for (int i = 0; i < nIters; ++i) {
-    // 	avg_perf += perf[i];
-    //     if (perf[i] < min_perf) min_perf = perf[i];
-    //     if (perf[i] > max_perf) max_perf = perf[i];
-    // }
-    // avg_perf /= nIters;
-
-    // printf("%s: vertices = %d edges = %lld trees = %u nIters = %d MST performance min = %.4f avg = %.4f max = %.4f MTEPS\n", 
-    //         inFilename, g.n, (long long)g.m, trees_output.numTrees, nIters, min_perf, avg_perf, max_perf);
-    // printf("Performance = %.4f MTEPS\n", avg_perf);
-    // free(perf);
+    
     delete msg;
 }
 
@@ -170,6 +134,9 @@ void Main::ContinueMST()
         // CkPrintf("Waiting for reduction from Continue\n");
     } else {
         // CkPrintf("Finished\n");
+        clock_gettime(CLOCK, &finish_ts);
+        double time = (finish_ts.tv_nsec - (double)start_ts.tv_nsec) * 1.0e-9 + (finish_ts.tv_sec - (double)start_ts.tv_sec);
+        CkPrintf("\tfinished. Time is %.4f secs\n", time);
         forest_t trees_output;
         convert_to_output(&g, &mst, &trees_output);
         write_output_information(&trees_output, outFilename);
