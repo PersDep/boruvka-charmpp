@@ -20,6 +20,7 @@ private:
   int nTrees, mstCounter;
   struct timespec start_ts, finish_ts;
 
+  CProxy_Hello helloArray;
   vector<EmbeddedEdge> embeddedEdges;
   vector<double> weights;
   
@@ -42,7 +43,10 @@ private:
   void ContinueMST();
   void convert_to_output(graph_t *G, void* result, forest_t *trees_output);
   void write_output_information(forest_t *trees, char *filename);
-  void reduce(CkReductionMsg *msg);
+  // void reduce(CkReductionMsg *msg);
+  void reduce(int uniteAmount);
+  void push(int id);
+  void noConnections();
 };
 
 

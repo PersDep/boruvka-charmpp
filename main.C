@@ -62,7 +62,7 @@ void Main::MST(graph_t *G)
 {
 	graph = Graph(G->n, G->m, G);
 	// double mstWeight = 0;
-	nTrees = graph.nVertices;
+	nTrees = graph.nVertices - 1;
     mstCounter = 0;
 	mst.clear();
 	mst.push_back(vector<edge_id_t>());
@@ -72,13 +72,12 @@ void Main::MST(graph_t *G)
         weights.push_back(edge.weight);
     }
 
-    CProxy_Hello helloArray = CProxy_Hello::ckNew(graph.fragments.size());
-    int counter = 0;
+    helloArray = CProxy_Hello::ckNew(graph.fragments.size());
     for (auto &fragment : graph.fragments) {
         vector<int> fragmentBuf;
         for (auto &v : fragment.second)
             fragmentBuf.push_back(v.first);
-        helloArray[counter++].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first, 
+        helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first, 
                                     embeddedEdges.size(), (int *)embeddedEdges.data(),
                                     weights.size(), weights.data(),
                                     graph.subsets.size(), (int *)graph.subsets.data(),
@@ -89,6 +88,8 @@ void Main::MST(graph_t *G)
 
 void Main::ContinueMST()
 {
+    // CkPrintf("Fragments was:\n");
+    // graph.PrintFragments();
     // CkPrintf("Continue MST\n");
     bool cheapestExists = false;
     for (int i = 0; i < graph.nVertices; i++)
@@ -110,15 +111,16 @@ void Main::ContinueMST()
     }
     if (nTrees > 1) {
         // CkPrintf("NEXT MST %u\n", graph.fragments.size());
-        CProxy_Hello helloArray = CProxy_Hello::ckNew(graph.fragments.size());
-        int counter = 0;
+        // CProxy_Hello helloArray = CProxy_Hello::ckNew(graph.fragments.size());
+        for (int i = 0; i < graph.nVertices; i++)
+            if (!graph.fragments.count(i))
+                helloArray[i].ckDestroy();
         for (auto &fragment : graph.fragments) {
             vector<int> fragmentBuf;
             for (auto &v : fragment.second)
                 fragmentBuf.push_back(v.first);
-            helloArray[counter++].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first, 
-                                        embeddedEdges.size(), (int *)embeddedEdges.data(),
-                                        weights.size(), weights.data(),
+            helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first, 
+                                        0, nullptr, 0, nullptr,
                                         graph.subsets.size(), (int *)graph.subsets.data(),
                                         fragmentBuf.size(), fragmentBuf.data());
         }
@@ -137,13 +139,40 @@ void Main::ContinueMST()
     }
 }
 
-void Main::reduce(CkReductionMsg *msg)
+void Main::reduce(int uniteAmount)
 {
-    int length = msg->getSize() / sizeof(int);
-    int *my_reduce = (int *)msg->getData();
+    // int length = msg->getSize() / sizeof(int);
+    // int *my_reduce = (int *)msg->getData();
     // CkPrintf("Reduce %d\n", length);
-    graph.cheapestEdges = vector<int>(my_reduce, my_reduce + length);
-    ContinueMST();
+    // graph.cheapestEdges = vector<int>(my_reduce, my_reduce + length);
+    // ContinueMST();
+
+    // for (int i = 0; i < graph.nVertices; i++)
+    //     if (!graph.fragments.count(i))
+    //         helloArray[i].ckDestroy();
+    if (!uniteAmount)
+        noConnections();
+    for (auto &fragment : graph.fragments) {
+        helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first,
+                                    0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr);
+    }
+}
+
+void Main::push(int id)
+{
+    mst[mstCounter].push_back(id);
+    nTrees--;
+    if (!nTrees)
+        done();
+}
+
+void Main::noConnections()
+{
+    mst.push_back(vector<edge_id_t>());
+    mstCounter++;
+    nTrees--;
+    if (!nTrees)
+        done();
 }
 
 void Main::convert_to_output(graph_t *G, void* result, forest_t *trees_output)
@@ -251,6 +280,15 @@ void Main::freeGraph(graph_t *G)
 }
 
 void Main::done() {
+    clock_gettime(CLOCK, &finish_ts);
+    double time = (finish_ts.tv_nsec - (double)start_ts.tv_nsec) * 1.0e-9 + (finish_ts.tv_sec - (double)start_ts.tv_sec);
+    CkPrintf("\tfinished. Time is %.4f secs\n", time);
+    forest_t trees_output;
+    convert_to_output(&g, &mst, &trees_output);
+    write_output_information(&trees_output, outFilename);
+    free(trees_output.p_edge_list);
+    free(trees_output.edge_id);
+    freeGraph(&g);
     CkExit();
 }
 

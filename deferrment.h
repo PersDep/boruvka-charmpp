@@ -131,7 +131,7 @@ struct Graph
 	  p|fragments;
     }
 
-	Graph() { }
+	Graph(): nVertices(0), nEdges(0) { }
 
     Graph(int nVertices, int nEdges, graph_t *rmatGraph = nullptr): nVertices(nVertices), nEdges(nEdges)
     {
@@ -163,10 +163,8 @@ struct Graph
     {
 	    if (subsets[xroot].rank < subsets[yroot].rank) {
 		    subsets[xroot].parent = yroot;
+		    subsets[yroot].rank++;
 		    UpdateFragments(xroot, yroot);
-	    } else if (subsets[xroot].rank > subsets[yroot].rank) {
-		    subsets[yroot].parent = xroot;
-		    UpdateFragments(yroot, xroot);
 	    } else {
 		    subsets[yroot].parent = xroot;
 		    subsets[xroot].rank++;

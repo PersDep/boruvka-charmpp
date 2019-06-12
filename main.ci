@@ -7,7 +7,9 @@ mainmodule main {
   mainchare Main {
     entry Main(CkArgMsg* msg);
     entry void done();
-    entry [reductiontarget] void reduce(CkReductionMsg *msg);
+    //entry [reductiontarget] void reduce(CkReductionMsg *msg);
+    entry [reductiontarget] void reduce(int uniteAmount);
+    entry void push(int id);
   };
 
 };
