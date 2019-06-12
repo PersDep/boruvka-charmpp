@@ -40,8 +40,8 @@ void Hello::ProcessFragment(int nVertices, int nEdges, int parent, int sizeEdges
         if (graph.fragments[parent].count(graph.edges[i].src))
               graph.CheckEdge(graph.Find(graph.edges[i].src), graph.Find(graph.edges[i].dest), i);
 
-    const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
     // CkPrintf("Time to contribute\n");
+    const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
     contribute(sizeof(int) * graph.cheapestEdges.size(), graph.cheapestEdges.data(), CkReduction::max_int, cb);
     // CkPrintf("Contributed\n");
 }

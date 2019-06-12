@@ -20,6 +20,10 @@ private:
   int nTrees, mstCounter;
   struct timespec start_ts, finish_ts;
 
+  vector<EmbeddedEdge> embeddedEdges;
+  vector<double> weights;
+  
+
  public:
 
   /// Constructors ///

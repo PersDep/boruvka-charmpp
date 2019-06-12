@@ -67,8 +67,6 @@ void Main::MST(graph_t *G)
 	mst.clear();
 	mst.push_back(vector<edge_id_t>());
 
-    vector<EmbeddedEdge> embeddedEdges;
-    vector<double> weights;
     for (auto &edge : graph.edges) {
         embeddedEdges.push_back(EmbeddedEdge(edge));
         weights.push_back(edge.weight);
@@ -111,13 +109,6 @@ void Main::ContinueMST()
         nTrees--;
     }
     if (nTrees > 1) {
-        vector<EmbeddedEdge> embeddedEdges;
-        vector<double> weights;
-        for (auto &edge : graph.edges) {
-            embeddedEdges.push_back(EmbeddedEdge(edge));
-            weights.push_back(edge.weight);
-        }
-
         // CkPrintf("NEXT MST %u\n", graph.fragments.size());
         CProxy_Hello helloArray = CProxy_Hello::ckNew(graph.fragments.size());
         int counter = 0;
@@ -133,7 +124,6 @@ void Main::ContinueMST()
         }
         // CkPrintf("Waiting for reduction from Continue\n");
     } else {
-        // CkPrintf("Finished\n");
         clock_gettime(CLOCK, &finish_ts);
         double time = (finish_ts.tv_nsec - (double)start_ts.tv_nsec) * 1.0e-9 + (finish_ts.tv_sec - (double)start_ts.tv_sec);
         CkPrintf("\tfinished. Time is %.4f secs\n", time);
