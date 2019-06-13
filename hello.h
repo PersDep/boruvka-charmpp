@@ -25,8 +25,8 @@ class Hello : public CBase_Hello {
   Hello(CkMigrateMessage *msg);
 
   /// Entry Methods ///
-  void ProcessFragment(int, int, int, int, int *, int, double *, int , int *, int, int *);
-  void Receive(map<int, bool> fragment, int id);
+  void ProcessFragment(int, int, int, int, int *, int, double *, int , int *);
+  void Receive(map<int, bool> fragment);
   void UpdateParent(int child, int parent);
   void PromoteRank(int parent);
 

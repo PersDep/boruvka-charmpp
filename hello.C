@@ -24,8 +24,10 @@ Hello::Hello()
 Hello::Hello(CkMigrateMessage *msg) {}
 
 
-void Hello::ProcessFragment(int nVertices, int nEdges, int _parent, int sizeEdges, int *edges, int sizeWeights, double *weights, int sizeSubsets, int *subsets, int sizeFragment, int *fragment)
+void Hello::ProcessFragment(int nVertices, int nEdges, int _parent, int sizeEdges, int *edges, int sizeWeights, double *weights, int sizeSubsets, int *subsets)
 {
+    // CkPrintf("Running fragment %d of size %u on chare %d on proc %d\n", _parent, graph.fragments[parent].size(), thisIndex, CkMyPe());
+
     if (!working) {
         int zero = 0;
         const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
@@ -36,22 +38,16 @@ void Hello::ProcessFragment(int nVertices, int nEdges, int _parent, int sizeEdge
     parent = _parent;
     // CkPrintf("Running fragment %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
     if (!graph.nVertices) { 
-      graph.nVertices = nVertices;
-      graph.nEdges = nEdges;
-      EmbeddedEdge *myEdges = (EmbeddedEdge *)edges;
-      for (int i = 0; i < sizeEdges; i++)
-        graph.edges.push_back(Edge(myEdges[i].id, myEdges[i].src, myEdges[i].dest, weights[i]));
-
-      Subset *mySubsets = (Subset *)subsets;
-      graph.subsets = vector<Subset>(mySubsets, mySubsets + sizeSubsets);
-      graph.fragments.clear();
-      for (int i = 0; i < sizeFragment; i++)
-        graph.fragments[parent][fragment[i]] = true;
+        graph.nVertices = nVertices;
+        graph.nEdges = nEdges;
+        EmbeddedEdge *myEdges = (EmbeddedEdge *)edges;
+        for (int i = 0; i < sizeEdges; i++)
+            graph.edges.push_back(Edge(myEdges[i].id, myEdges[i].src, myEdges[i].dest, weights[i]));
+        Subset *mySubsets = (Subset *)subsets;
+        graph.subsets = vector<Subset>(mySubsets, mySubsets + sizeSubsets);
+        graph.fragments.clear();
+        graph.fragments[parent][parent] = true;
     }
-
-    // CkPrintf("Running fragment %d of size %u on chare %d on proc %d\n", parent, graph.fragments[parent].size(), thisIndex, CkMyPe());
-    // if (graph.fragments[parent].size() == nVertices)
-    //   mainProxy.done();
 
     graph.InitCheapestEdges();
 
@@ -67,9 +63,10 @@ void Hello::ProcessFragment(int nVertices, int nEdges, int _parent, int sizeEdge
             int root2 = graph.Find(graph.edges[graph.cheapestEdges[i.first]].dest);
             if (rank < graph.subsets[root2].rank || (rank == graph.subsets[root2].rank && parent > root2)) {
                 // CkPrintf("Finishing fragment %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
+                mainProxy.push(graph.edges[graph.cheapestEdges[i.first]].id);
                 working = false;
                 parent = graph.subsets[root2].parent;
-                thisProxy[graph.subsets[root2].parent].Receive(graph.fragments[_parent], graph.edges[graph.cheapestEdges[i.first]].id);
+                thisProxy[graph.subsets[root2].parent].Receive(graph.fragments[_parent]);
                 break;
             }
         }
@@ -84,21 +81,18 @@ void Hello::ProcessFragment(int nVertices, int nEdges, int _parent, int sizeEdge
     // CkPrintf("Contributed\n");
 }
 
-void Hello::Receive(map<int, bool> fragment, int id)
-{;
+void Hello::Receive(map<int, bool> fragment)
+{
     // CkPrintf("Receive fragment for parent %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
     if (working) {
-        for (auto &child : fragment) {
-            // graph.subsets[child.first].parent = parent;
-            thisProxy.UpdateParent(child.first, parent);
-        }
-        graph.fragments[parent].insert(fragment.begin(), fragment.end());
         thisProxy.PromoteRank(parent);
-        mainProxy.push(id);
+        for (auto &child : fragment)
+            thisProxy.UpdateParent(child.first, parent);
+        graph.fragments[parent].insert(fragment.begin(), fragment.end());
         // CkPrintf("Receive fragment for parent %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
         // graph.PrintFragments();
     } else {
-        thisProxy[parent].Receive(fragment, id);
+        thisProxy[parent].Receive(fragment);
     }
 }
 

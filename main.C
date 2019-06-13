@@ -36,9 +36,9 @@ int nIters = 64;
 Main::Main(CkArgMsg* msg) {
     CkPrintf("Running MST using %d processors.\n", CkNumPes());
 
-  // Set the mainProxy readonly to point to a
-  //   proxy for the Main chare object (this
-  //   chare object).
+    // Set the mainProxy readonly to point to a
+    //   proxy for the Main chare object (this
+    //   chare object).
     mainProxy = thisProxy;
 
     /* initializing and reading the graph */
@@ -62,7 +62,7 @@ void Main::MST(graph_t *G)
 {
 	graph = Graph(G->n, G->m, G);
 	// double mstWeight = 0;
-	nTrees = graph.nVertices - 1;
+	nTrees = graph.nVertices;
     mstCounter = 0;
 	mst.clear();
 	mst.push_back(vector<edge_id_t>());
@@ -74,87 +74,22 @@ void Main::MST(graph_t *G)
 
     helloArray = CProxy_Hello::ckNew(graph.fragments.size());
     for (auto &fragment : graph.fragments) {
-        vector<int> fragmentBuf;
-        for (auto &v : fragment.second)
-            fragmentBuf.push_back(v.first);
-        helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first, 
+        helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first,
                                     embeddedEdges.size(), (int *)embeddedEdges.data(),
                                     weights.size(), weights.data(),
-                                    graph.subsets.size(), (int *)graph.subsets.data(),
-                                    fragmentBuf.size(), fragmentBuf.data());
-    }
-    // CkPrintf("Waiting for reduction\n");
-}
-
-void Main::ContinueMST()
-{
-    // CkPrintf("Fragments was:\n");
-    // graph.PrintFragments();
-    // CkPrintf("Continue MST\n");
-    bool cheapestExists = false;
-    for (int i = 0; i < graph.nVertices; i++)
-        if (graph.cheapestEdges[i] != -1) {
-            cheapestExists = true;
-            int set1 = graph.Find(graph.edges[graph.cheapestEdges[i]].src);
-            int set2 = graph.Find(graph.edges[graph.cheapestEdges[i]].dest);
-            if (set1 == set2)
-                continue;
-            // mstWeight += graph.edges[graph.cheapestEdges[i]].weight;
-            mst[mstCounter].push_back(graph.edges[graph.cheapestEdges[i]].id);
-            graph.Unite(set1, set2);
-            nTrees--;
-        }
-    if (!cheapestExists) {
-        mst.push_back(vector<edge_id_t>());
-        mstCounter++;
-        nTrees--;
-    }
-    if (nTrees > 1) {
-        // CkPrintf("NEXT MST %u\n", graph.fragments.size());
-        // CProxy_Hello helloArray = CProxy_Hello::ckNew(graph.fragments.size());
-        for (int i = 0; i < graph.nVertices; i++)
-            if (!graph.fragments.count(i))
-                helloArray[i].ckDestroy();
-        for (auto &fragment : graph.fragments) {
-            vector<int> fragmentBuf;
-            for (auto &v : fragment.second)
-                fragmentBuf.push_back(v.first);
-            helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first, 
-                                        0, nullptr, 0, nullptr,
-                                        graph.subsets.size(), (int *)graph.subsets.data(),
-                                        fragmentBuf.size(), fragmentBuf.data());
-        }
-        // CkPrintf("Waiting for reduction from Continue\n");
-    } else {
-        clock_gettime(CLOCK, &finish_ts);
-        double time = (finish_ts.tv_nsec - (double)start_ts.tv_nsec) * 1.0e-9 + (finish_ts.tv_sec - (double)start_ts.tv_sec);
-        CkPrintf("\tfinished. Time is %.4f secs\n", time);
-        forest_t trees_output;
-        convert_to_output(&g, &mst, &trees_output);
-        write_output_information(&trees_output, outFilename);
-        free(trees_output.p_edge_list);
-        free(trees_output.edge_id);
-        freeGraph(&g);
-        done();
+                                    graph.subsets.size(), (int *)graph.subsets.data());
     }
 }
 
 void Main::reduce(int uniteAmount)
 {
-    // int length = msg->getSize() / sizeof(int);
-    // int *my_reduce = (int *)msg->getData();
-    // CkPrintf("Reduce %d\n", length);
-    // graph.cheapestEdges = vector<int>(my_reduce, my_reduce + length);
-    // ContinueMST();
+    // CkPrintf("Reduce %d\n", uniteAmount);
 
-    // for (int i = 0; i < graph.nVertices; i++)
-    //     if (!graph.fragments.count(i))
-    //         helloArray[i].ckDestroy();
     if (!uniteAmount)
         noConnections();
+
     for (auto &fragment : graph.fragments) {
-        helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first,
-                                    0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr);
+        helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first, 0, nullptr, 0, nullptr, 0, nullptr);
     }
 }
 
@@ -162,7 +97,7 @@ void Main::push(int id)
 {
     mst[mstCounter].push_back(id);
     nTrees--;
-    if (!nTrees)
+    if (nTrees <= 1)
         done();
 }
 
@@ -171,7 +106,7 @@ void Main::noConnections()
     mst.push_back(vector<edge_id_t>());
     mstCounter++;
     nTrees--;
-    if (!nTrees)
+    if (nTrees <= 1)
         done();
 }
 

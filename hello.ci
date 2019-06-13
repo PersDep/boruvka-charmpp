@@ -2,8 +2,8 @@ module hello {
 
   array [1D] Hello {
     entry Hello();
-    entry void ProcessFragment(int, int, int, int sizeEdges, int edges[sizeEdges * 3], int sizeWeights, double weights[sizeWeights], int sizeSubsets, int subsets[sizeSubsets * 2], int sizeFragment, int fragment[sizeFragment]);
-    entry void Receive(map<int, bool> fragment, int id);
+    entry void ProcessFragment(int, int, int, int sizeEdges, int edges[sizeEdges * 3], int sizeWeights, double weights[sizeWeights], int sizeSubsets, int subsets[sizeSubsets * 2]);
+    entry void Receive(map<int, bool> fragment);
     entry void UpdateParent(int child, int parent);
     entry void PromoteRank(int parent);
   };
