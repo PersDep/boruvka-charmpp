@@ -17,7 +17,7 @@
 #include "main.h"
 #include "hello.decl.h"
 
-char inFilename[FNAME_LEN];
+char inFilename[FNAME_LEN / 2];
 char outFilename[FNAME_LEN];
 int nIters = 64;
 
@@ -46,7 +46,7 @@ Main::Main(CkArgMsg* msg) {
     readGraph(&g, inFilename);
 
     CkPrintf("start algorithm iterations...\n");
-    CkPrintf("\tMST %d\t ...",0); fflush(NULL);
+    CkPrintf("\tMST %d\t ...", 0); fflush(NULL);
     clock_gettime(CLOCK, &start_ts);
     MST(&g);
     
@@ -60,25 +60,22 @@ Main::Main(CkMigrateMessage* msg) { }
 
 void Main::MST(graph_t *G)
 {
-	graph = Graph(G->n, G->m, G);
-	// double mstWeight = 0;
+	graph = Graph(G->n, G->m, G, false);
 	nTrees = graph.nVertices;
     mstCounter = 0;
-	mst.clear();
+    // double mstWeight = 0;
 	mst.push_back(vector<edge_id_t>());
 
+    vector<EmbeddedEdge> embeddedEdges;
+    vector<double> weights;
     for (auto &edge : graph.edges) {
         embeddedEdges.push_back(EmbeddedEdge(edge));
         weights.push_back(edge.weight);
     }
 
-    helloArray = CProxy_Hello::ckNew(graph.fragments.size());
-    for (auto &fragment : graph.fragments) {
-        helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first,
-                                    embeddedEdges.size(), (int *)embeddedEdges.data(),
-                                    weights.size(), weights.data(),
-                                    graph.subsets.size(), (int *)graph.subsets.data());
-    }
+    helloArray = CProxy_Hello::ckNew(graph.nVertices, graph.nEdges, (int *)embeddedEdges.data(),  weights.data(), graph.nVertices);
+    for (int i = 0; i < graph.nVertices; i++)
+        helloArray[i].ProcessFragment(i);
 }
 
 void Main::reduce(int uniteAmount)
@@ -88,9 +85,8 @@ void Main::reduce(int uniteAmount)
     if (!uniteAmount)
         noConnections();
 
-    for (auto &fragment : graph.fragments) {
-        helloArray[fragment.first].ProcessFragment(graph.nVertices, graph.nEdges, fragment.first, 0, nullptr, 0, nullptr, 0, nullptr);
-    }
+    for (int i = 0; i < graph.nVertices; i++)
+        helloArray[i].ProcessFragment(i);
 }
 
 void Main::push(int id)

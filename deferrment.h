@@ -14,7 +14,7 @@
 
 #define DEFAULT_ARITY 16
 #define SMALL_COMPONENT_EDGES_THRESHOLD   2
-#define FNAME_LEN   256
+#define FNAME_LEN   512
 #define WEIGHT_ERROR 0.0001
 
 typedef uint32_t vertex_id_t;
@@ -121,8 +121,8 @@ struct Graph
     int nVertices, nEdges;
     vector<Edge> edges;
     vector<Subset> subsets;
-    vector<int> cheapestEdges;
     map<int, map<int, bool>> fragments;
+	vector<int> cheapestEdges;
 
 	void pup(PUP::er &p) {
       Graph::pup(p);
@@ -133,18 +133,28 @@ struct Graph
 
 	Graph(): nVertices(0), nEdges(0) { }
 
-    Graph(int nVertices, int nEdges, graph_t *rmatGraph = nullptr): nVertices(nVertices), nEdges(nEdges)
+    Graph(int nVertices, int nEdges, graph_t *rmatGraph = nullptr, bool meta = true): nVertices(nVertices), nEdges(nEdges)
     {
     	edges = vector<Edge>(nEdges);
-    	subsets = vector<Subset>(nVertices);
     	if (rmatGraph)
 	        for (vertex_id_t i = 0; i < rmatGraph->n; i++) {
-		        subsets[i] = Subset(i);
-		        fragments[i][i] = true;
+				if (meta) {
+					subsets.push_back(Subset(i));
+					fragments[i][i] = true;
+				}
 		        for (edge_id_t j = rmatGraph->rowsIndices[i]; j < rmatGraph->rowsIndices[i + 1]; j++)
 			        edges[j] = Edge(j, i, rmatGraph->endV[j], rmatGraph->weights[j]);
 	        }
     }
+
+	Graph(int nVertices, int nEdges, int parent, EmbeddedEdge *embeddedEdges, double *weights): nVertices(nVertices), nEdges(nEdges)
+	{
+		for (int i = 0; i < nEdges; i++)
+            edges.push_back(Edge(embeddedEdges[i].id, embeddedEdges[i].src, embeddedEdges[i].dest, weights[i]));
+		for (int i = 0; i < nVertices; i++)
+			subsets.push_back(Subset(i));
+		fragments[parent][parent] = true;
+	}
 
     void InitCheapestEdges() { cheapestEdges = vector<int>(nVertices, -1); }
 

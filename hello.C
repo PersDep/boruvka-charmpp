@@ -16,38 +16,30 @@ using namespace std;
 extern /* readonly */ CProxy_Main mainProxy;
 
 
-Hello::Hello()
+Hello::Hello(int nVertices, int nEdges, int *edges, double *weights)
 {
-    working = true;
+    EmbeddedEdge *embeddedEdges = (EmbeddedEdge *)edges;
+    graph = Graph(nVertices, nEdges, thisIndex, embeddedEdges, weights);
+    active = true;
+    parent = thisIndex;
 }
 
 Hello::Hello(CkMigrateMessage *msg) {}
 
 
-void Hello::ProcessFragment(int nVertices, int nEdges, int _parent, int sizeEdges, int *edges, int sizeWeights, double *weights, int sizeSubsets, int *subsets)
+void Hello::ProcessFragment(int root)
 {
-    // CkPrintf("Running fragment %d of size %u on chare %d on proc %d\n", _parent, graph.fragments[parent].size(), thisIndex, CkMyPe());
+    // CkPrintf("Running fragment %d of size %u on chare %d on proc %d\n", root, graph.fragments[root].size(), thisIndex, CkMyPe());
+    // CkPrintf("Running fragment %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
 
-    if (!working) {
+    if (!active) {
         int zero = 0;
         const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
         contribute(sizeof(int), &zero, CkReduction::max_int, cb);
         return;
     }
     
-    parent = _parent;
-    // CkPrintf("Running fragment %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
-    if (!graph.nVertices) { 
-        graph.nVertices = nVertices;
-        graph.nEdges = nEdges;
-        EmbeddedEdge *myEdges = (EmbeddedEdge *)edges;
-        for (int i = 0; i < sizeEdges; i++)
-            graph.edges.push_back(Edge(myEdges[i].id, myEdges[i].src, myEdges[i].dest, weights[i]));
-        Subset *mySubsets = (Subset *)subsets;
-        graph.subsets = vector<Subset>(mySubsets, mySubsets + sizeSubsets);
-        graph.fragments.clear();
-        graph.fragments[parent][parent] = true;
-    }
+    parent = root;
 
     graph.InitCheapestEdges();
 
@@ -64,27 +56,25 @@ void Hello::ProcessFragment(int nVertices, int nEdges, int _parent, int sizeEdge
             if (rank < graph.subsets[root2].rank || (rank == graph.subsets[root2].rank && parent > root2)) {
                 // CkPrintf("Finishing fragment %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
                 mainProxy.push(graph.edges[graph.cheapestEdges[i.first]].id);
-                working = false;
+                active = false;
                 parent = graph.subsets[root2].parent;
-                thisProxy[graph.subsets[root2].parent].Receive(graph.fragments[_parent]);
+                thisProxy[parent].Receive(graph.fragments[root]);
                 break;
             }
         }
 
-    if (graph.fragments[parent].size() == nVertices)
+    if (graph.fragments[parent].size() == graph.nVertices)
         cheapestExists = true;
 
     // CkPrintf("Time to contribute\n");
     const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
     contribute(sizeof(int), &cheapestExists, CkReduction::max_int, cb);
-    // contribute(sizeof(int) * graph.cheapestEdges.size(), graph.cheapestEdges.data(), CkReduction::max_int, cb);
     // CkPrintf("Contributed\n");
 }
 
 void Hello::Receive(map<int, bool> fragment)
 {
-    // CkPrintf("Receive fragment for parent %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
-    if (working) {
+    if (active) {
         thisProxy.PromoteRank(parent);
         for (auto &child : fragment)
             thisProxy.UpdateParent(child.first, parent);

@@ -16,16 +16,16 @@ class Hello : public CBase_Hello {
  private:
   Graph graph;
   int parent;
-  int working;
+  int active;
 
  public:
 
   /// Constructors ///
-  Hello();
+  Hello(int nVertices, int nEdges, int *edges, double *weights);
   Hello(CkMigrateMessage *msg);
 
   /// Entry Methods ///
-  void ProcessFragment(int, int, int, int, int *, int, double *, int , int *);
+  void ProcessFragment(int root);
   void Receive(map<int, bool> fragment);
   void UpdateParent(int child, int parent);
   void PromoteRank(int parent);

@@ -21,8 +21,6 @@ private:
   struct timespec start_ts, finish_ts;
 
   CProxy_Hello helloArray;
-  vector<EmbeddedEdge> embeddedEdges;
-  vector<double> weights;
   
 
  public:
