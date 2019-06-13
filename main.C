@@ -27,10 +27,12 @@ int nIters = 64;
 #error "Failed to find a timing clock."
 #endif
 
+
 /* readonly */ CProxy_Main mainProxy;
 
 // Entry point of Charm++ application
-Main::Main(CkArgMsg* msg) {
+Main::Main(CkArgMsg* msg)
+{
     CkPrintf("Running MST using %d processors.\n", CkNumPes());
 
     // Set the mainProxy readonly to point to a
@@ -54,12 +56,12 @@ Main::Main(CkArgMsg* msg) {
 // NOTE: This constructor does not need to appear in the ".ci" file
 Main::Main(CkMigrateMessage* msg) { }
 
+
 void Main::MST(graph_t *G)
 {
 	graph = Graph(G->n, G->m, G, false);
 	nTrees = graph.nVertices;
     mstCounter = 0;
-    // double mstWeight = 0;
 	mst.push_back(vector<edge_id_t>());
 
     vector<EmbeddedEdge> embeddedEdges;
@@ -76,8 +78,6 @@ void Main::MST(graph_t *G)
 
 void Main::reduce(int uniteAmount)
 {
-    // CkPrintf("Reduce %d\n", uniteAmount);
-
     if (!uniteAmount)
         noConnections();
 

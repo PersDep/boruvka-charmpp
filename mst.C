@@ -29,9 +29,6 @@ MST::MST(CkMigrateMessage *msg) {}
 
 void MST::ProcessFragment(int root)
 {
-    // CkPrintf("Running fragment %d of size %u on chare %d on proc %d\n", root, graph.fragments[root].size(), thisIndex, CkMyPe());
-    // CkPrintf("Running fragment %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
-
     if (!active) {
         int zero = 0;
         const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
@@ -54,7 +51,6 @@ void MST::ProcessFragment(int root)
             cheapestExists = true;
             int root2 = graph.Find(graph.edges[graph.cheapestEdges[i.first]].dest);
             if (rank < graph.subsets[root2].rank || (rank == graph.subsets[root2].rank && parent > root2)) {
-                // CkPrintf("Finishing fragment %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
                 mainProxy.push(graph.edges[graph.cheapestEdges[i.first]].id);
                 active = false;
                 parent = graph.subsets[root2].parent;
@@ -66,10 +62,8 @@ void MST::ProcessFragment(int root)
     if (graph.fragments[parent].size() == graph.nVertices)
         cheapestExists = true;
 
-    // CkPrintf("Time to contribute\n");
     const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
     contribute(sizeof(int), &cheapestExists, CkReduction::max_int, cb);
-    // CkPrintf("Contributed\n");
 }
 
 void MST::Receive(map<int, bool> fragment)
@@ -79,8 +73,6 @@ void MST::Receive(map<int, bool> fragment)
         for (auto &child : fragment)
             thisProxy.UpdateParent(child.first, parent);
         graph.fragments[parent].insert(fragment.begin(), fragment.end());
-        // CkPrintf("Receive fragment for parent %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
-        // graph.PrintFragments();
     } else {
         thisProxy[parent].Receive(fragment);
     }
