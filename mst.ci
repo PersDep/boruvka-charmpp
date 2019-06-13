@@ -1,7 +1,7 @@
-module hello {
+module mst {
 
-  array [1D] Hello {
-    entry Hello(int nVertices, int nEdges, int edges[nEdges * 3], double weights[nEdges]);
+  array [1D] MST {
+    entry MST(int nVertices, int nEdges, int edges[nEdges * 3], double weights[nEdges]);
     entry void ProcessFragment(int root);
     entry void Receive(map<int, bool> fragment);
     entry void UpdateParent(int child, int parent);

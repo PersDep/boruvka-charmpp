@@ -1,17 +1,17 @@
-#ifndef __HELLO_H__
-#define __HELLO_H__
+#ifndef __MST_H__
+#define __MST_H__
 
 #include <stdexcept>
 #include <vector>
 
-#include "deferrment.h"
+#include "graph.h"
 
 using namespace std;
 
 typedef vector<vector<edge_id_t > > result_t;
 
-class Hello : public CBase_Hello {
-	Hello_SDAG_CODE
+class MST : public CBase_MST {
+	MST_SDAG_CODE
 
  private:
   Graph graph;
@@ -21,8 +21,8 @@ class Hello : public CBase_Hello {
  public:
 
   /// Constructors ///
-  Hello(int nVertices, int nEdges, int *edges, double *weights);
-  Hello(CkMigrateMessage *msg);
+  MST(int nVertices, int nEdges, int *edges, double *weights);
+  MST(CkMigrateMessage *msg);
 
   /// Entry Methods ///
   void ProcessFragment(int root);
@@ -33,4 +33,4 @@ class Hello : public CBase_Hello {
 };
 
 
-#endif //__HELLO_H__
+#endif //__MST_H__

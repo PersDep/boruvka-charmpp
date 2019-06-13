@@ -4,11 +4,11 @@
 
 #include <error.h>
 
-#include "deferrment.h"
+#include "graph.h"
 
-#include "hello.decl.h"
+#include "mst.decl.h"
 
-#include "hello.h"
+#include "mst.h"
 #include "main.decl.h"
 
 using namespace std;
@@ -16,7 +16,7 @@ using namespace std;
 extern /* readonly */ CProxy_Main mainProxy;
 
 
-Hello::Hello(int nVertices, int nEdges, int *edges, double *weights)
+MST::MST(int nVertices, int nEdges, int *edges, double *weights)
 {
     EmbeddedEdge *embeddedEdges = (EmbeddedEdge *)edges;
     graph = Graph(nVertices, nEdges, thisIndex, embeddedEdges, weights);
@@ -24,10 +24,10 @@ Hello::Hello(int nVertices, int nEdges, int *edges, double *weights)
     parent = thisIndex;
 }
 
-Hello::Hello(CkMigrateMessage *msg) {}
+MST::MST(CkMigrateMessage *msg) {}
 
 
-void Hello::ProcessFragment(int root)
+void MST::ProcessFragment(int root)
 {
     // CkPrintf("Running fragment %d of size %u on chare %d on proc %d\n", root, graph.fragments[root].size(), thisIndex, CkMyPe());
     // CkPrintf("Running fragment %d on chare %d on proc %d\n", parent, thisIndex, CkMyPe());
@@ -72,7 +72,7 @@ void Hello::ProcessFragment(int root)
     // CkPrintf("Contributed\n");
 }
 
-void Hello::Receive(map<int, bool> fragment)
+void MST::Receive(map<int, bool> fragment)
 {
     if (active) {
         thisProxy.PromoteRank(parent);
@@ -86,14 +86,14 @@ void Hello::Receive(map<int, bool> fragment)
     }
 }
 
-void Hello::UpdateParent(int child, int parent)
+void MST::UpdateParent(int child, int parent)
 {
     graph.subsets[child].parent = parent;
 }
 
-void Hello::PromoteRank(int parent)
+void MST::PromoteRank(int parent)
 {
     graph.subsets[parent].rank++;
 }
 
-#include "hello.def.h"
+#include "mst.def.h"

@@ -1,7 +1,5 @@
-#include <iostream>
-#include <vector>
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <error.h>
 #include <assert.h>
 #include <string.h>
@@ -10,12 +8,12 @@
 #include <math.h>
 #include <float.h>
 
-#include "deferrment.h"
+#include "graph.h"
 
 #include "main.decl.h"
 
 #include "main.h"
-#include "hello.decl.h"
+#include "mst.decl.h"
 
 char inFilename[FNAME_LEN / 2];
 char outFilename[FNAME_LEN];
@@ -30,7 +28,6 @@ int nIters = 64;
 #endif
 
 /* readonly */ CProxy_Main mainProxy;
-
 
 // Entry point of Charm++ application
 Main::Main(CkArgMsg* msg) {
@@ -53,7 +50,6 @@ Main::Main(CkArgMsg* msg) {
     delete msg;
 }
 
-
 // Constructor needed for chare object migration (ignore for now)
 // NOTE: This constructor does not need to appear in the ".ci" file
 Main::Main(CkMigrateMessage* msg) { }
@@ -73,9 +69,9 @@ void Main::MST(graph_t *G)
         weights.push_back(edge.weight);
     }
 
-    helloArray = CProxy_Hello::ckNew(graph.nVertices, graph.nEdges, (int *)embeddedEdges.data(),  weights.data(), graph.nVertices);
+    mstArray = CProxy_MST::ckNew(graph.nVertices, graph.nEdges, (int *)embeddedEdges.data(),  weights.data(), graph.nVertices);
     for (int i = 0; i < graph.nVertices; i++)
-        helloArray[i].ProcessFragment(i);
+        mstArray[i].ProcessFragment(i);
 }
 
 void Main::reduce(int uniteAmount)
@@ -86,7 +82,7 @@ void Main::reduce(int uniteAmount)
         noConnections();
 
     for (int i = 0; i < graph.nVertices; i++)
-        helloArray[i].ProcessFragment(i);
+        mstArray[i].ProcessFragment(i);
 }
 
 void Main::push(int id)
@@ -141,12 +137,12 @@ void Main::write_output_information(forest_t *trees, char *filename)
 
 void Main::usage(int argc, char **argv)
 {
-    printf("Usage:\n");
-    printf("    %s -in <input> [options] \n", argv[0]);
-    printf("Options:\n");
-    printf("    -in <input> -- input graph filename\n");
-    printf("    -out <output> -- algorithm result will be placed to output filename. It can be used in validation. <in>.mst is default value.\n");
-    printf("    -nIters <nIters> -- number of iterations. By default 64\n");
+    CkPrintf("Usage:\n");
+    CkPrintf("    %s -in <input> [options] \n", argv[0]);
+    CkPrintf("Options:\n");
+    CkPrintf("    -in <input> -- input graph filename\n");
+    CkPrintf("    -out <output> -- algorithm result will be placed to output filename. It can be used in validation. <in>.mst is default value.\n");
+    CkPrintf("    -nIters <nIters> -- number of iterations. By default 64\n");
     exit(1);
 }
 

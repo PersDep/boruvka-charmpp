@@ -3,26 +3,26 @@ CHARMC = $(CHARMDIR)/bin/charmc $(OPTS)
 
 
 default: all
-all: hello
+all: mst
 
 
-hello : main.o hello.o
-	$(CHARMC) -language charm++ -o hello main.o hello.o
+mst : main.o mst.o
+	$(CHARMC) -language charm++ -o mst main.o mst.o
 
-main.o : main.C main.h main.decl.h main.def.h hello.decl.h
+main.o : main.C main.h main.decl.h main.def.h mst.decl.h
 	$(CHARMC) -o main.o main.C
 
 main.decl.h main.def.h : main.ci
 	$(CHARMC) main.ci
 
-hello.o : hello.C hello.h hello.decl.h hello.def.h main.decl.h
-	$(CHARMC) -o hello.o hello.C
+mst.o : mst.C mst.h mst.decl.h mst.def.h main.decl.h
+	$(CHARMC) -o mst.o mst.C
 
-hello.decl.h hello.def.h : hello.ci
-	$(CHARMC) hello.ci
+mst.decl.h mst.def.h : mst.ci
+	$(CHARMC) mst.ci
 
 
 clean:
 	rm -f main.decl.h main.def.h main.o
-	rm -f hello.decl.h hello.def.h hello.o
-	rm -f hello charmrun
+	rm -f mst.decl.h mst.def.h mst.o
+	rm -f mst charmrun
