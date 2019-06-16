@@ -1,11 +1,12 @@
 module mst {
 
   array [1D] MST {
-    entry MST(int nVertices, int nEdges, int edges[nEdges * 3], double weights[nEdges]);
-    entry void ProcessFragment(int root);
-    entry void Receive(map<int, bool> fragment);
+    entry MST(int nVertices, int nEdges);
+    entry void ProcessFragment(int root, int size, int edges[size * 3], double weights[size]);
+    entry void Receive(map<int, bool> fragment, int size, int edges[size * 3], double weights[size], int author);
     entry void UpdateParent(int child, int parent);
     entry void PromoteRank(int parent);
+    entry void Answer();
   };
 
 };

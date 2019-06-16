@@ -129,6 +129,13 @@ struct Graph
 		fragments[parent][parent] = true;
 	}
 
+    Graph(int nVertices, int nEdges, int parent): nVertices(nVertices), nEdges(nEdges)
+	{
+		for (int i = 0; i < nVertices; i++)
+			subsets.push_back(Subset(i));
+		fragments[parent][parent] = true;
+	}
+
     void InitCheapestEdges() { cheapestEdges = vector<int>(nVertices, -1); }
 
 	int Find(int i) { return subsets[i].parent; }

@@ -64,16 +64,16 @@ void Main::MST(graph_t *G)
     mstCounter = 0;
 	mst.push_back(vector<edge_id_t>());
 
-    vector<EmbeddedEdge> embeddedEdges;
-    vector<double> weights;
+    vector<vector<EmbeddedEdge>> embeddedEdgesPacks(graph.nVertices);
+    vector<vector<double>> weights(graph.nVertices);
     for (auto &edge : graph.edges) {
-        embeddedEdges.push_back(EmbeddedEdge(edge));
-        weights.push_back(edge.weight);
+        embeddedEdgesPacks[edge.src].push_back(EmbeddedEdge(edge));
+        weights[edge.src].push_back(edge.weight);
     }
 
-    mstArray = CProxy_MST::ckNew(graph.nVertices, graph.nEdges, (int *)embeddedEdges.data(),  weights.data(), graph.nVertices);
+    mstArray = CProxy_MST::ckNew(graph.nVertices, graph.nEdges, graph.nVertices);
     for (int i = 0; i < graph.nVertices; i++)
-        mstArray[i].ProcessFragment(i);
+        mstArray[i].ProcessFragment(i, int(embeddedEdgesPacks[i].size()), (int *)embeddedEdgesPacks[i].data(), weights[i].data());
 }
 
 void Main::reduce(int uniteAmount)
@@ -82,7 +82,7 @@ void Main::reduce(int uniteAmount)
         noConnections();
 
     for (int i = 0; i < graph.nVertices; i++)
-        mstArray[i].ProcessFragment(i);
+        mstArray[i].ProcessFragment(i, 0, nullptr, nullptr);
 }
 
 void Main::push(int id)

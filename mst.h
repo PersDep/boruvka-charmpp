@@ -21,14 +21,15 @@ class MST : public CBase_MST {
  public:
 
   /// Constructors ///
-  MST(int nVertices, int nEdges, int *edges, double *weights);
+  MST(int nVertices, int nEdges);
   MST(CkMigrateMessage *msg);
 
   /// Entry Methods ///
-  void ProcessFragment(int root);
-  void Receive(map<int, bool> fragment);
+  void ProcessFragment(int root, int size, int *edges, double *weights);
+  void Receive(map<int, bool> fragment, int size, int *edges, double *weights, int author);
   void UpdateParent(int child, int parent);
   void PromoteRank(int parent);
+  void Answer();
 
 };
 

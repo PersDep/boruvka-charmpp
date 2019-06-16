@@ -16,10 +16,9 @@ using namespace std;
 extern /* readonly */ CProxy_Main mainProxy;
 
 
-MST::MST(int nVertices, int nEdges, int *edges, double *weights)
+MST::MST(int nVertices, int nEdges)
 {
-    EmbeddedEdge *embeddedEdges = (EmbeddedEdge *)edges;
-    graph = Graph(nVertices, nEdges, thisIndex, embeddedEdges, weights);
+    graph = Graph(nVertices, nEdges, thisIndex);
     active = true;
     parent = thisIndex;
 }
@@ -27,22 +26,32 @@ MST::MST(int nVertices, int nEdges, int *edges, double *weights)
 MST::MST(CkMigrateMessage *msg) {}
 
 
-void MST::ProcessFragment(int root)
+void MST::ProcessFragment(int root, int size, int *edges, double *weights)
 {
     if (!active) {
-        int zero = 0;
-        const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
-        contribute(sizeof(int), &zero, CkReduction::max_int, cb);
+        thisProxy[root].ckDestroy();
         return;
     }
     
     parent = root;
 
+    if (size) {
+        EmbeddedEdge *embeddedEdges = (EmbeddedEdge *)edges;
+        for (int i = 0; i < size; i++)
+            graph.edges.push_back(Edge(embeddedEdges[i].id, embeddedEdges[i].src, embeddedEdges[i].dest, weights[i]));
+    }
+
+    vector<EmbeddedEdge> embeddedEdges;
+    vector<double> embeddedWeights;
+    for (auto &edge : graph.edges) {
+        embeddedEdges.push_back(EmbeddedEdge(edge));
+        embeddedWeights.push_back(edge.weight);
+    }
+
     graph.InitCheapestEdges();
 
-    for (int i = 0; i < graph.nEdges; i++)
-        if (graph.fragments[parent].count(graph.edges[i].src))
-              graph.CheckEdge(graph.Find(graph.edges[i].src), graph.Find(graph.edges[i].dest), i);
+    for (size_t i = 0; i < graph.edges.size(); i++)
+        graph.CheckEdge(graph.Find(graph.edges[i].src), graph.Find(graph.edges[i].dest), int(i));
 
     int rank = graph.subsets[parent].rank;
     int cheapestExists = false;
@@ -54,7 +63,7 @@ void MST::ProcessFragment(int root)
                 mainProxy.push(graph.edges[graph.cheapestEdges[i.first]].id);
                 active = false;
                 parent = graph.subsets[root2].parent;
-                thisProxy[parent].Receive(graph.fragments[root]);
+                thisProxy[parent].Receive(graph.fragments[root], int(graph.edges.size()), (int *)embeddedEdges.data(), embeddedWeights.data(), root);
                 break;
             }
         }
@@ -62,19 +71,25 @@ void MST::ProcessFragment(int root)
     if (graph.fragments[parent].size() == graph.nVertices)
         cheapestExists = true;
 
-    const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
-    contribute(sizeof(int), &cheapestExists, CkReduction::max_int, cb);
+    if (active) {
+        const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
+        contribute(sizeof(int), &cheapestExists, CkReduction::max_int, cb);
+    }
 }
 
-void MST::Receive(map<int, bool> fragment)
+void MST::Receive(map<int, bool> fragment, int size, int *edges, double *weights, int author)
 {
     if (active) {
         thisProxy.PromoteRank(parent);
         for (auto &child : fragment)
             thisProxy.UpdateParent(child.first, parent);
         graph.fragments[parent].insert(fragment.begin(), fragment.end());
+        EmbeddedEdge *embeddedEdges = (EmbeddedEdge *)edges;
+        for (int i = 0; i < size; i++)
+            graph.edges.push_back(Edge(embeddedEdges[i].id, embeddedEdges[i].src, embeddedEdges[i].dest, weights[i]));
+        thisProxy[author].Answer();
     } else {
-        thisProxy[parent].Receive(fragment);
+        thisProxy[parent].Receive(fragment, size, edges, weights, author);
     }
 }
 
@@ -86,6 +101,13 @@ void MST::UpdateParent(int child, int parent)
 void MST::PromoteRank(int parent)
 {
     graph.subsets[parent].rank++;
+}
+
+void MST::Answer()
+{
+    int buf = true;
+    const CkCallback cb(CkReductionTarget(Main, reduce), mainProxy);
+    contribute(sizeof(int), &buf, CkReduction::max_int, cb);
 }
 
 #include "mst.def.h"
