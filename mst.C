@@ -39,6 +39,14 @@ void MST::ProcessFragment(int root, int size, int *edges, double *weights)
         EmbeddedEdge *embeddedEdges = (EmbeddedEdge *)edges;
         for (int i = 0; i < size; i++)
             graph.edges.push_back(Edge(embeddedEdges[i].id, embeddedEdges[i].src, embeddedEdges[i].dest, weights[i]));
+    } else {
+        vector<vector<Edge>::iterator> edgesToErase;
+        for (auto edge = graph.edges.begin(); edge != graph.edges.end(); edge++)
+            if (graph.Find(edge->src) == parent && graph.Find(edge->dest) == parent)
+                edgesToErase.push_back(edge);
+        for (auto it = edgesToErase.rbegin(); it != edgesToErase.rend(); it++) {
+            graph.edges.erase(*it);
+        }
     }
 
     vector<EmbeddedEdge> embeddedEdges;
