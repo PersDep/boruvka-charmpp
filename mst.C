@@ -40,7 +40,7 @@ void MST::ProcessFragment(int root, int size, int *edges, double *weights)
         for (int i = 0; i < size; i++)
             graph.edges.push_back(Edge(embeddedEdges[i].id, embeddedEdges[i].src, embeddedEdges[i].dest, weights[i]));
     } else {
-        vector<vector<Edge>::iterator> edgesToErase;
+        vector<list<Edge>::iterator> edgesToErase;
         for (auto edge = graph.edges.begin(); edge != graph.edges.end(); edge++)
             if (graph.Find(edge->src) == parent && graph.Find(edge->dest) == parent)
                 edgesToErase.push_back(edge);
@@ -58,17 +58,17 @@ void MST::ProcessFragment(int root, int size, int *edges, double *weights)
 
     graph.InitCheapestEdges();
 
-    for (size_t i = 0; i < graph.edges.size(); i++)
-        graph.CheckEdge(graph.Find(graph.edges[i].src), graph.Find(graph.edges[i].dest), int(i));
+    for (auto &edge : graph.edges)
+        graph.CheckEdge(graph.Find(edge.src), graph.Find(edge.dest), edge);
 
     int rank = graph.subsets[parent].rank;
     int cheapestExists = false;
     for (auto &i : graph.fragments[parent])
-        if (graph.cheapestEdges[i.first] != -1) {
+        if (graph.cheapestEdges[i.first].src != -1) {
             cheapestExists = true;
-            int root2 = graph.Find(graph.edges[graph.cheapestEdges[i.first]].dest);
+            int root2 = graph.Find(graph.cheapestEdges[i.first].dest);
             if (rank < graph.subsets[root2].rank || (rank == graph.subsets[root2].rank && parent > root2)) {
-                mainProxy.push(graph.edges[graph.cheapestEdges[i.first]].id);
+                mainProxy.push(graph.cheapestEdges[i.first].id);
                 active = false;
                 parent = graph.subsets[root2].parent;
                 thisProxy[parent].Receive(graph.fragments[root], int(graph.edges.size()), (int *)embeddedEdges.data(), embeddedWeights.data(), root);

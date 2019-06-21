@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <list>
 #include <map>
 #include <vector>
 
@@ -99,16 +100,15 @@ struct Subset
 struct Graph
 {
     int nVertices, nEdges;
-    vector<Edge> edges;
+    list<Edge> edges;
     vector<Subset> subsets;
     map<int, map<int, bool>> fragments;
-	vector<int> cheapestEdges;
+	vector<Edge> cheapestEdges;
 
 	Graph(): nVertices(0), nEdges(0) { }
 
     Graph(int nVertices, int nEdges, graph_t *rmatGraph = nullptr, bool meta = true): nVertices(nVertices), nEdges(nEdges)
     {
-    	edges = vector<Edge>(nEdges);
     	if (rmatGraph)
 	        for (vertex_id_t i = 0; i < rmatGraph->n; i++) {
 				if (meta) {
@@ -116,7 +116,7 @@ struct Graph
 					fragments[i][i] = true;
 				}
 		        for (edge_id_t j = rmatGraph->rowsIndices[i]; j < rmatGraph->rowsIndices[i + 1]; j++)
-			        edges[j] = Edge(j, i, rmatGraph->endV[j], rmatGraph->weights[j]);
+			        edges.push_back(Edge(j, i, rmatGraph->endV[j], rmatGraph->weights[j]));
 	        }
     }
 
@@ -136,17 +136,17 @@ struct Graph
 		fragments[parent][parent] = true;
 	}
 
-    void InitCheapestEdges() { cheapestEdges = vector<int>(nVertices, -1); }
+    void InitCheapestEdges() { cheapestEdges = vector<Edge>(nVertices); }
 
 	int Find(int i) { return subsets[i].parent; }
 
-    void CheckEdge(int set1, int set2, int i)
+    void CheckEdge(int set1, int set2, const Edge &edge)
     {
         if (set1 == set2) {
 	        return;
         }
-	    if (cheapestEdges[set1] == -1 || edges[cheapestEdges[set1]].weight > edges[i].weight)
-		    cheapestEdges[set1] = i;
+	    if (cheapestEdges[set1].src == -1 || cheapestEdges[set1].weight > edge.weight)
+		    cheapestEdges[set1] = edge;
     }
 
     void Unite(int xroot, int yroot)
